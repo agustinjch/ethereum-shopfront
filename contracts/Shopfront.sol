@@ -3,13 +3,13 @@ pragma solidity ^0.4.8;
 import "Owned.sol";
 
 contract Shopfront is Owned {
-	event LogProductAdded(uint id, string name, uint price, uint stock);
-	event LogProductRemoved(uint id, string name, uint price, uint stock);
+	event LogProductAdded(uint id, bytes32 name, uint price, uint stock);
+	event LogProductRemoved(uint id, bytes32 name, uint price, uint stock);
 	event LogProductId(uint id);
 	event LogProductPurchased(uint id, address customer);
 
 	struct Product {
-		string name;
+		bytes32 name;
 		uint price;
 		uint stock;
 	}
@@ -32,7 +32,7 @@ contract Shopfront is Owned {
 
 	function getProduct(uint id)
 		constant
-		returns (string name, uint price, uint stock) {
+		returns (bytes32 name, uint price, uint stock) {
 		Product product = products[id];
 		return (
 			product.name,
@@ -40,9 +40,10 @@ contract Shopfront is Owned {
 			product.stock);
 	}
 
-	function addProduct(uint id, string name, uint price, uint stock)
+	function addProduct(uint id, bytes32 name, uint price, uint stock)
 		fromOwner
 		returns (bool successful) {
+		
 		products[id] = Product({
 			name: name,
 			price: price,
