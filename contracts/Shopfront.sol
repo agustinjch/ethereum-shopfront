@@ -5,23 +5,28 @@ import "Owned.sol";
 contract Shopfront is Owned {
 	event LogProductAdded(uint id, bytes32 name, uint price, uint stock);
 	event LogProductRemoved(uint id, bytes32 name, uint price, uint stock);
-	event LogProductId(uint id);
-	event LogProductPurchased(uint id, address customer);
+	event LogProductPurchased(uint id, address customer, uint stock, uint cashDifference);
+	event LogWithdrawedValue(uint valueToSend, uint contractValue);
 
 	struct Product {
 		bytes32 name;
 		uint price;
 		uint stock;
+		bool exists;
 	}
 
 	mapping(uint => Product) private products;
 	uint[] private ids;
+	uint private idsLength;
+	uint private contractValue;
 
 	function Shopfront() {
+		idsLength = 0;
+		contractValue = 0;
 	}
 
 	function getProductCount() constant returns (uint length) {
-		return ids.length;	
+		return idsLength;	
 	}
 
 	function getProductIdAt(uint index)
@@ -43,13 +48,14 @@ contract Shopfront is Owned {
 	function addProduct(uint id, bytes32 name, uint price, uint stock)
 		fromOwner
 		returns (bool successful) {
-		
+		if (products[id].exists) throw;
 		products[id] = Product({
 			name: name,
 			price: price,
-			stock: stock
+			stock: stock,
+			exists: true
 		});
-		ids.push(id);
+		idsLength = ids.push(id);
 		LogProductAdded(id, name, price, stock);
 		return true;
 	}
@@ -67,23 +73,44 @@ contract Shopfront is Owned {
 				}
 			}
 
-			LogProductId(idsIndex);
 
 			for (i = idsIndex; i<ids.length-1; i++){
 	            ids[i] = ids[i+1];
 	        }
 	        delete ids[ids.length-1];
-	        ids.length--;
+	        idsLength--;
 			return true;
+	}
+
+	function withdrawMoney(uint valueToSend)
+		fromOwner
+		returns (bool successful) {
+		if (valueToSend > contractValue) throw;
+		if (!msg.sender.send(valueToSend)) throw;
+		contractValue =  contractValue - valueToSend;
+		LogWithdrawedValue(valueToSend, contractValue);
+		return true;
 	}
 
 	function buyProduct(uint id)
 		payable
 		returns (bool successful) {
-		if (msg.value < products[id].price)	{
-			throw;
+		if (!products[id].exists) throw;
+
+		if (products[id].stock == 0) throw;
+		products[id].stock = products[id].stock - 1;
+
+		if (msg.value < products[id].price)	throw;
+		
+		uint valueDifference = msg.value - products[id].price;
+		
+		if (valueDifference > 0){
+			if (!msg.sender.send(valueDifference)) throw;	
 		}
-		LogProductPurchased(id, msg.sender);
+		contractValue = contractValue + products[id].price;
+
+		LogProductPurchased(id, msg.sender, products[id].stock, valueDifference);
+		
 		return true;
 	}
 }
