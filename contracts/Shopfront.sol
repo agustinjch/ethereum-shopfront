@@ -12,6 +12,7 @@ contract Shopfront is Owned {
 		bytes32 name;
 		uint price;
 		uint stock;
+		uint index;
 	}
 
 	mapping(uint => Product) private products;
@@ -48,7 +49,8 @@ contract Shopfront is Owned {
 		products[id] = Product({
 			name: name,
 			price: price,
-			stock: stock
+			stock: stock,
+			index: ids.length
 		});
 		uint arrayLength = ids.push(id);
 		ids.length = arrayLength;
@@ -61,10 +63,15 @@ contract Shopfront is Owned {
 		returns (bool successful) {
 			Product product = products[id];
 			LogProductRemoved(id,  product.name,  product.price,  product.stock);
-			delete products[id];
 			for (uint i = 0; i<ids.length-1; i++){
 				if (ids[i] == id){
+					// Get the product index in the ids array, and set it.
+					products[i].index = products[id].index;
+					// Remove the product to delete
+					delete products[id];
+					// set the last id in the position of the removed product.
 					ids[i] = ids[ids.length - 1];
+					// Remove the last id of the ids array, because we moved it to the position of the deleted product.
 					delete ids[ids.length-1];
 			        ids.length--;	        
 					return true;
