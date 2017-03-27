@@ -62,20 +62,16 @@ contract Shopfront is Owned {
 			Product product = products[id];
 			LogProductRemoved(id,  product.name,  product.price,  product.stock);
 			delete products[id];
-			uint idsIndex = 0;
 			for (uint i = 0; i<ids.length-1; i++){
 				if (ids[i] == id){
-					idsIndex = i;
+					ids[i] = ids[ids.length - 1];
+					delete ids[ids.length-1];
+			        ids.length--;	        
+					return true;
 				}
 			}
 
-
-			for (i = idsIndex; i<ids.length-1; i++){
-	            ids[i] = ids[i+1];
-	        }
-	        delete ids[ids.length-1];
-	        ids.length--;
-			return true;
+			
 	}
 
 	function withdrawMoney(uint valueToSend)
@@ -95,7 +91,7 @@ contract Shopfront is Owned {
 		if (products[id].stock == 0) throw;
 
 		if (msg.value < products[id].price)	throw;
-		
+
 		uint valueDifference = msg.value - products[id].price;
 		
 		if (valueDifference > 0){
