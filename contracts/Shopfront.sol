@@ -12,21 +12,16 @@ contract Shopfront is Owned {
 		bytes32 name;
 		uint price;
 		uint stock;
-		bool exists;
 	}
 
 	mapping(uint => Product) private products;
 	uint[] private ids;
-	uint private idsLength;
-	uint private contractValue;
 
 	function Shopfront() {
-		idsLength = 0;
-		contractValue = 0;
 	}
 
 	function getProductCount() constant returns (uint length) {
-		return idsLength;	
+		return ids.length;
 	}
 
 	function getProductIdAt(uint index)
@@ -48,14 +43,15 @@ contract Shopfront is Owned {
 	function addProduct(uint id, bytes32 name, uint price, uint stock)
 		fromOwner
 		returns (bool successful) {
-		if (products[id].exists) throw;
+		if (products[id].price != 0)
+			return false;
 		products[id] = Product({
 			name: name,
 			price: price,
-			stock: stock,
-			exists: true
+			stock: stock
 		});
-		idsLength = ids.push(id);
+		uint arrayLength = ids.push(id);
+		ids.length = arrayLength;
 		LogProductAdded(id, name, price, stock);
 		return true;
 	}
@@ -78,27 +74,25 @@ contract Shopfront is Owned {
 	            ids[i] = ids[i+1];
 	        }
 	        delete ids[ids.length-1];
-	        idsLength--;
+	        ids.length--;
 			return true;
 	}
 
 	function withdrawMoney(uint valueToSend)
 		fromOwner
 		returns (bool successful) {
-		if (valueToSend > contractValue) throw;
+		if (valueToSend > this.balance) throw;
 		if (!msg.sender.send(valueToSend)) throw;
-		contractValue =  contractValue - valueToSend;
-		LogWithdrawedValue(valueToSend, contractValue);
+		LogWithdrawedValue(valueToSend, this.balance);
 		return true;
 	}
 
 	function buyProduct(uint id)
 		payable
 		returns (bool successful) {
-		if (!products[id].exists) throw;
+		if (products[id].price == 0) throw;
 
 		if (products[id].stock == 0) throw;
-		products[id].stock = products[id].stock - 1;
 
 		if (msg.value < products[id].price)	throw;
 		
@@ -107,7 +101,8 @@ contract Shopfront is Owned {
 		if (valueDifference > 0){
 			if (!msg.sender.send(valueDifference)) throw;	
 		}
-		contractValue = contractValue + products[id].price;
+
+		products[id].stock = products[id].stock - 1;
 
 		LogProductPurchased(id, msg.sender, products[id].stock, valueDifference);
 		

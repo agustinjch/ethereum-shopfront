@@ -80,7 +80,7 @@ contract('Shopfront', function(accounts) {
 
     it("should not add a product if not owner", function() {
       return expectedExceptionPromise(function () {
-        return shopfront.addProduct.call(1, "shirt", 10, 1,
+        return shopfront.addProduct(1, "shirt", 10, 1,
           { from: accounts[1], gas: 3000000 });     
         },
         3000000);
@@ -137,7 +137,7 @@ contract('Shopfront', function(accounts) {
           return shopfront.getProductCount.call();
         })
         .then(function(count) {
-          assert.strictEqual(count.toNumber(), 1, "should have add a product");
+          assert.strictEqual(count.toNumber(), 1, "should have added a product");
           return shopfront.getProductIdAt(0);
         })
         .then(function (id) {
@@ -183,12 +183,11 @@ contract('Shopfront', function(accounts) {
     });
 
     it("should not be possible to add a product if already exists", function() {
-      return expectedExceptionPromise(function () {
-        return shopfront.addProduct.call(
-            1, "shirt", 10, 1, 
-            { from: accounts[0], gas: 3000000 });     
-          },
-          3000000);
+      var blockNumber;
+      return shopfront.addProduct.call(1, "shirt", 10, 1, { from: accounts[0] })
+        .then(function(successful) {
+          assert.isFalse(successful, "should not be possible to add a product");
+        })
       });
 
     it("should be possible to remove a product", function() {
@@ -263,7 +262,7 @@ contract('Shopfront', function(accounts) {
 
     it("should not be possible to purchase a product below price", function() {
       return expectedExceptionPromise(function () {
-        return shopfront.buyProduct.call(
+        return shopfront.buyProduct(
             1, 
             { from: accounts[1], value: 9, gas: 3000000 });     
           },
@@ -272,7 +271,7 @@ contract('Shopfront', function(accounts) {
 
     it("should not be possible to purchase a non existing product", function() {
       return expectedExceptionPromise(function () {
-        return shopfront.buyProduct.call(
+        return shopfront.buyProduct(
             10,
             { from: accounts[1], value: 90, gas: 3000000 });     
           },
@@ -298,8 +297,8 @@ contract('Shopfront', function(accounts) {
           var eventArgs = eventAndReceipt[0][0].args;
           assert.strictEqual(eventArgs.id.toNumber(), 1, "should be the product id");
           assert.strictEqual(eventArgs.customer, accounts[1], "should be the customer address");
-          assert.strictEqual(eventArgs.stock,1, "should be the product stock");
-          assert.strictEqual(eventArgs.cashDifference,0, "should be the cash difference");
+          assert.strictEqual(eventArgs.stock.toNumber(), 1, "should be the product stock");
+          assert.strictEqual(eventArgs.cashDifference.toNumber(),0, "should be the cash difference");
         })
       });
 
@@ -322,14 +321,14 @@ contract('Shopfront', function(accounts) {
           var eventArgs = eventAndReceipt[0][0].args;
           assert.strictEqual(eventArgs.id.toNumber(), 1, "should be the product id");
           assert.strictEqual(eventArgs.customer, accounts[1], "should be the customer address");
-          assert.strictEqual(eventArgs.stock, 0, "should be the product stock");
-          assert.strictEqual(eventArgs.cashDifference,10, "should be the cash difference");
+          assert.strictEqual(eventArgs.stock.toNumber(), 0, "should be the product stock");
+          assert.strictEqual(eventArgs.cashDifference.toNumber(),10, "should be the cash difference");
         })
       });
 
     it("should not be possible to purchase a product in 0 stock", function() {
       return expectedExceptionPromise(function () {
-        return shopfront.buyProduct.call(
+        return shopfront.buyProduct(
             1,
             { from: accounts[1], value: 90, gas: 3000000 });     
           },
@@ -366,7 +365,7 @@ contract('Shopfront', function(accounts) {
 
     it("should not be possible to withdraw money with no purchases before", function() {
       return expectedExceptionPromise(function () {
-        return shopfront.withdrawMoney.call(
+        return shopfront.withdrawMoney(
             100, 
             { from: accounts[0], gas: 3000000 });     
           },
@@ -397,7 +396,7 @@ contract('Shopfront', function(accounts) {
 
     it("shouldn't be possible to withdraw money if not owner", function() {
       return expectedExceptionPromise(function () {
-        return shopfront.withdrawMoney.call(
+        return shopfront.withdrawMoney(
             100, 
             { from: accounts[1], gas: 3000000 });     
           },
