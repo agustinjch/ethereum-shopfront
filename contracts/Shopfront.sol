@@ -33,12 +33,13 @@ contract Shopfront is Owned {
 
 	function getProduct(uint id)
 		constant
-		returns (bytes32 name, uint price, uint stock) {
+		returns (bytes32 name, uint price, uint stock, uint index) {
 		Product product = products[id];
 		return (
 			product.name,
 			product.price,
-			product.stock);
+			product.stock,
+			product.index);
 	}
 
 	function addProduct(uint id, bytes32 name, uint price, uint stock)
@@ -50,10 +51,8 @@ contract Shopfront is Owned {
 			name: name,
 			price: price,
 			stock: stock,
-			index: ids.length
+			index: ids.push(id) - 1
 		});
-		uint arrayLength = ids.push(id);
-		ids.length = arrayLength;
 		LogProductAdded(id, name, price, stock);
 		return true;
 	}
@@ -63,22 +62,13 @@ contract Shopfront is Owned {
 		returns (bool successful) {
 			Product product = products[id];
 			LogProductRemoved(id,  product.name,  product.price,  product.stock);
-			for (uint i = 0; i<ids.length-1; i++){
-				if (ids[i] == id){
-					// Get the product index in the ids array, and set it.
-					products[i].index = products[id].index;
-					// Remove the product to delete
-					delete products[id];
-					// set the last id in the position of the removed product.
-					ids[i] = ids[ids.length - 1];
-					// Remove the last id of the ids array, because we moved it to the position of the deleted product.
-					delete ids[ids.length-1];
-			        ids.length--;	        
-					return true;
-				}
-			}
-
-			
+			uint productIndex = product.index;
+			ids[productIndex] = ids[ids.length-1];
+			products[ids[productIndex]].index = productIndex;
+			delete products[id];
+			delete ids[ids.length-1];
+			ids.length--;
+			return true;
 	}
 
 	function withdrawMoney(uint valueToSend)

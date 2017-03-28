@@ -183,11 +183,12 @@ contract('Shopfront', function(accounts) {
     });
 
     it("should not be possible to add a product if already exists", function() {
-      var blockNumber;
-      return shopfront.addProduct.call(1, "shirt", 10, 1, { from: accounts[0] })
-        .then(function(successful) {
-          assert.isFalse(successful, "should not be possible to add a product");
-        })
+      return expectedExceptionPromise(function () {
+        return shopfront.addProduct(
+            1, "shirt", 10, 1,
+            { from: accounts[1], value: 9, gas: 3000000 });     
+          },
+          3000000);
       });
 
     it("should be possible to remove a product", function() {
@@ -213,7 +214,7 @@ contract('Shopfront', function(accounts) {
           assert.strictEqual(web3.toUtf8(eventArgs.name), "shirt" , "should be the product name in bytes32");
           assert.strictEqual(eventArgs.price.toNumber(), 10, "should be the product price");
           assert.strictEqual(eventArgs.stock.toNumber(), 1, "should be the product stock");
-          return shopfront.getProductCount.call();
+          return shopfront.getProductCount();
         })
         .then(function(count) {
           assert.strictEqual(count.toNumber(), 1, "should have removed the product, so the count should be 1");
