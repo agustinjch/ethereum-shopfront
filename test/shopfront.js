@@ -70,6 +70,59 @@ var expectedExceptionPromise = function (action, gasToUse) {
 contract('Shopfront', function(accounts) {  
   var shopfront;
 
+  describe("Test change capabilities", function(){
+    beforeEach('Deploy a new Shopfront contract', function() {
+      return Shopfront.new({}, {from: accounts[0]})
+      .then(function(_shopfront) {
+        shopfront = _shopfront;
+      });
+    });
+
+    it("should not allow to change to new owner if not owner", function() {
+      return expectedExceptionPromise(function () {
+        return shopfront.setOwner(accounts[2],
+          { from: accounts[1], gas: 3000000 });     
+        },
+        3000000);
+    });
+
+    it("should not allow to change owner same address", function() {
+      return expectedExceptionPromise(function () {
+        return shopfront.setOwner(accounts[0],
+          { from: accounts[0], gas: 3000000 });     
+        },
+        3000000);
+    });
+
+    it("should be possible to change ownership", function() {
+      var blockNumber;
+
+      return shopfront.setOwner.call(accounts[1], { from: accounts[0] })
+        .then(function(successful) {
+          assert.isTrue(successful, "should be possible to remove a product");
+          blockNumber = web3.eth.blockNumber + 1;
+          return shopfront.setOwner(accounts[1], { from: accounts[0] });
+        })
+        .then(function(tx) {
+          return Promise.all([
+            getEventsPromise(shopfront.LogOwnerChanged(
+              {},
+              { fromBlock: blockNumber, toBlock: "latest" })),
+            web3.eth.getTransactionReceiptMined(tx)
+          ]);
+        })
+        .then(function (eventAndReceipt) {
+          var eventArgs = eventAndReceipt[0][0].args;
+          assert.strictEqual(eventArgs.oldOwner, accounts[0], "should be the old owner");
+          assert.strictEqual(eventArgs.newOwner, accounts[1], "should be the new owner");
+        })
+      }); 
+
+
+
+
+  });
+
   describe("testing user restrictions", function() {
     before('Deploy a new Shopfront contract', function() {
       return Shopfront.new({}, {from: accounts[0]})
@@ -105,81 +158,26 @@ contract('Shopfront', function(accounts) {
 
 
   describe("Testing owner functions", function(){
-    before('Deploy a new Shopfront contract', function() {
+    beforeEach("should be possible to add a product", function() {
+      var blockNumber;
       return Shopfront.new({}, {from: accounts[0]})
       .then(function(_shopfront) {
         shopfront = _shopfront;
-      });
-    });
-
-    it("should be possible to add a product", function() {
-      var blockNumber;
-      return shopfront.addProduct.call(1, "shirt", 10, 1, { from: accounts[0] })
-        .then(function(successful) {
-          assert.isTrue(successful, "should be possible to add a product");
-          blockNumber = web3.eth.blockNumber + 1;
-          return shopfront.addProduct(1, "shirt", 10, 1, { from: accounts[0] });
-        })
-        .then(function(tx) {
-          return Promise.all([
-            getEventsPromise(shopfront.LogProductAdded(
-              {},
-              { fromBlock: blockNumber, toBlock: "latest" })),
-            web3.eth.getTransactionReceiptMined(tx)
-          ]);
-        })
-        .then(function (eventAndReceipt) {
-          var eventArgs = eventAndReceipt[0][0].args;
-          assert.strictEqual(eventArgs.id.toNumber(), 1, "should be the product id");
-          assert.strictEqual(web3.toUtf8(eventArgs.name), "shirt" , "should be the product name in bytes32");
-          assert.strictEqual(eventArgs.price.toNumber(), 10, "should be the product price");
-          assert.strictEqual(eventArgs.stock.toNumber(), 1, "should be the product stock");
-          return shopfront.getProductCount.call();
-        })
-        .then(function(count) {
-          assert.strictEqual(count.toNumber(), 1, "should have added a product");
-          return shopfront.getProductIdAt(0);
-        })
-        .then(function (id) {
-          assert.strictEqual(id.toNumber(), 1, "should be the first id");
-          return shopfront.getProduct(1);
-        })
-        .then(function(values) {
-          assert.strictEqual(web3.toUtf8(values[0]), "shirt" , "should be the product name in bytes32");
-          assert.strictEqual(values[1].toNumber(), 10, "should be the product price");
-          assert.strictEqual(values[2].toNumber(), 1, "should be the product stock");
-          blockNumber = web3.eth.blockNumber + 1;
-          return shopfront.addProduct(2, "shorts", 15, 20, { from: accounts[0] });
-        })
-        .then(function(tx) {
-          return Promise.all([
-            getEventsPromise(shopfront.LogProductAdded(
-              {},
-              { fromBlock: blockNumber, toBlock: "latest" })),
-            web3.eth.getTransactionReceiptMined(tx)
-          ]);
-        })
-        .then(function (eventAndReceipt) {
-          var eventArgs = eventAndReceipt[0][0].args;
-          assert.strictEqual(eventArgs.id.toNumber(), 2, "should be the product id");
-          assert.strictEqual(web3.toUtf8(eventArgs.name), "shorts" , "should be the product name in bytes32");
-          assert.strictEqual(eventArgs.price.toNumber(), 15, "should be the product price");
-          assert.strictEqual(eventArgs.stock.toNumber(), 20, "should be the product stock");
-          return shopfront.getProductCount.call();
-        })
-        .then(function(count) {
-          assert.strictEqual(count.toNumber(), 2, "should have add a product");
-          return shopfront.getProductIdAt(1);
-        })
-        .then(function (id) {
-          assert.strictEqual(id.toNumber(), 2, "should be the first id");
-          return shopfront.getProduct(2);
-        })
-        .then(function(values) {
-          assert.strictEqual(web3.toUtf8(values[0]), "shorts" , "should be the product name in bytes32");
-          assert.strictEqual(values[1].toNumber(), 15, "should be the product price");
-          assert.strictEqual(values[2].toNumber(), 20, "should be the product stock");
-        });
+        return shopfront.addProduct.call(1, "shirt", 10, 1, { from: accounts[0] })
+          .then(function(successful) {
+            assert.isTrue(successful, "should be possible to add a product");
+            blockNumber = web3.eth.blockNumber + 1;
+            return shopfront.addProduct(1, "shirt", 10, 1, { from: accounts[0] });
+          })
+          .then(function(tx) {
+            return Promise.all([
+              getEventsPromise(shopfront.LogProductAdded(
+                {},
+                { fromBlock: blockNumber, toBlock: "latest" })),
+              web3.eth.getTransactionReceiptMined(tx)
+            ]);
+          })
+        })  
     });
 
     it("should not be possible to add a product if already exists", function() {
@@ -217,39 +215,17 @@ contract('Shopfront', function(accounts) {
           return shopfront.getProductCount();
         })
         .then(function(count) {
-          assert.strictEqual(count.toNumber(), 1, "should have removed the product, so the count should be 1");
-          return shopfront.getProductIdAt(0);
+          assert.strictEqual(count.toNumber(), 0, "should have removed the product, so the count should be 1");
         })
-        .then(function (id) {
-          assert.strictEqual(id.toNumber(), 2, "should be the first id");
-          return shopfront.getProduct(2);
-        })
-        .then(function(values) {
-          assert.strictEqual(web3.toUtf8(values[0]), "shorts" , "should be the product name in bytes32");
-          assert.strictEqual(values[1].toNumber(), 15, "should be the product price");
-          assert.strictEqual(values[2].toNumber(), 20, "should be the product stock");
-        });
       }); 
-    });
 
-
-
-  describe("Test buyers capabilities", function(){
-    var blockNumber;
-    before('Deploy a new Shopfront contract', function() {
-      return Shopfront.new({}, {from: accounts[0]})
-      .then(function(_shopfront) {
-        shopfront = _shopfront;
-      });
-    });
-
-    it("should be possible to add a product", function() {
+    it("should be possible to add a second product", function() {
       var blockNumber;
-      return shopfront.addProduct.call(1, "shirt", 10, 1, { from: accounts[0] })
+      return shopfront.addProduct.call(2, "shorts", 25, 1, { from: accounts[0] })
         .then(function(successful) {
           assert.isTrue(successful, "should be possible to add a product");
           blockNumber = web3.eth.blockNumber + 1;
-          return shopfront.addProduct(1, "shirt", 10, 2, { from: accounts[0] });
+          return shopfront.addProduct(2, "shorts", 25, 1, { from: accounts[0] });
         })
         .then(function(tx) {
           return Promise.all([
@@ -259,7 +235,68 @@ contract('Shopfront', function(accounts) {
             web3.eth.getTransactionReceiptMined(tx)
           ]);
         })
-      });
+        .then(function (eventAndReceipt) {
+          var eventArgs = eventAndReceipt[0][0].args;
+          assert.strictEqual(eventArgs.id.toNumber(), 2, "should be the product id");
+          assert.strictEqual(web3.toUtf8(eventArgs.name), "shorts" , "should be the product name in bytes32");
+          assert.strictEqual(eventArgs.price.toNumber(), 25, "should be the product price");
+          assert.strictEqual(eventArgs.stock.toNumber(), 1, "should be the product stock");
+          return shopfront.getProductCount.call();
+        })
+        .then(function(count) {
+          assert.strictEqual(count.toNumber(), 2, "should have added a product");
+          return shopfront.getProductIdAt(0);
+        })
+        .then(function (id) {
+          assert.strictEqual(id.toNumber(), 1, "should be the first id");
+          return shopfront.getProduct(1);
+        })
+        .then(function(values) {
+          assert.strictEqual(web3.toUtf8(values[0]), "shirt" , "should be the product name in bytes32");
+          assert.strictEqual(values[1].toNumber(), 10, "should be the product price");
+          assert.strictEqual(values[2].toNumber(), 1, "should be the product stock");
+          blockNumber = web3.eth.blockNumber + 1;
+          return shopfront.addProduct(2, "shorts", 15, 20, { from: accounts[0] });
+        })
+      }); 
+    });
+
+
+
+  describe("Test buyers capabilities", function(){
+    beforeEach("should be possible to add a product", function() {
+      var blockNumber;
+      return Shopfront.new({}, {from: accounts[0]})
+      .then(function(_shopfront) {
+        shopfront = _shopfront;
+        return shopfront.addProduct.call(1, "shirt", 10, 1, { from: accounts[0] })
+          .then(function(successful) {
+            assert.isTrue(successful, "should be possible to add a product");
+            blockNumber = web3.eth.blockNumber + 1;
+            return shopfront.addProduct(1, "shirt", 10, 1, { from: accounts[0] });
+          })
+          .then(function(tx) {
+            return Promise.all([
+              getEventsPromise(shopfront.LogProductAdded(
+                {},
+                { fromBlock: blockNumber, toBlock: "latest" })),
+              web3.eth.getTransactionReceiptMined(tx)
+            ]);
+          })
+          .then(function() {
+            blockNumber = web3.eth.blockNumber + 1;
+            return shopfront.addProduct(2, "shorts", 25, 0, { from: accounts[0] });
+          })
+          .then(function(tx) {
+            return Promise.all([
+              getEventsPromise(shopfront.LogProductAdded(
+                {},
+                { fromBlock: blockNumber, toBlock: "latest" })),
+              web3.eth.getTransactionReceiptMined(tx)
+            ]);
+          })
+        })  
+    });
 
     it("should not be possible to purchase a product below price", function() {
       return expectedExceptionPromise(function () {
@@ -298,12 +335,13 @@ contract('Shopfront', function(accounts) {
           var eventArgs = eventAndReceipt[0][0].args;
           assert.strictEqual(eventArgs.id.toNumber(), 1, "should be the product id");
           assert.strictEqual(eventArgs.customer, accounts[1], "should be the customer address");
-          assert.strictEqual(eventArgs.stock.toNumber(), 1, "should be the product stock");
+          assert.strictEqual(eventArgs.stock.toNumber(), 0, "should be the product stock");
           assert.strictEqual(eventArgs.cashDifference.toNumber(),0, "should be the cash difference");
         })
       });
 
-    it("should be possible to purchase a product at a highest price", function() {
+    it("should be possible to purchase a product at a higher price", function() {
+      var currentAccountValue = web3.eth.getBalance(accounts[1]).toNumber();
       return shopfront.buyProduct.call(1, { from: accounts[1], value: 20 })
         .then(function (successful) {
           assert.isTrue(successful, "should be possible to purchase");
@@ -330,7 +368,7 @@ contract('Shopfront', function(accounts) {
     it("should not be possible to purchase a product in 0 stock", function() {
       return expectedExceptionPromise(function () {
         return shopfront.buyProduct(
-            1,
+            2,
             { from: accounts[1], value: 90, gas: 3000000 });     
           },
           3000000);
@@ -428,4 +466,6 @@ contract('Shopfront', function(accounts) {
           })
       });
   });
+
+
 });

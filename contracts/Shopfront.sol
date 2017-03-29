@@ -7,6 +7,7 @@ contract Shopfront is Owned {
 	event LogProductRemoved(uint id, bytes32 name, uint price, uint stock);
 	event LogProductPurchased(uint id, address customer, uint stock, uint cashDifference);
 	event LogWithdrawedValue(uint valueToSend, uint contractValue);
+	event LogOwnerChanged(address oldOwner, address newOwner);
 
 	struct Product {
 		bytes32 name;
@@ -20,6 +21,16 @@ contract Shopfront is Owned {
 
 	function Shopfront() {
 	}
+
+	function setOwner(address newOwner)
+		fromOwner
+		returns (bool successful) {
+			if (msg.sender == newOwner) throw;
+			LogOwnerChanged(msg.sender, newOwner);
+			owner = newOwner;
+			return true;
+
+		}
 
 	function getProductCount() constant returns (uint length) {
 		return ids.length;
@@ -66,7 +77,6 @@ contract Shopfront is Owned {
 			ids[productIndex] = ids[ids.length-1];
 			products[ids[productIndex]].index = productIndex;
 			delete products[id];
-			delete ids[ids.length-1];
 			ids.length--;
 			return true;
 	}
